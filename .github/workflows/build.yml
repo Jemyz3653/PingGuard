@@ -79,6 +79,7 @@ jobs:
       - name: Publish CI report branch
         if: always()
         run: |
+          set +e
           mkdir -p /tmp/report
           cp build.log probe.txt /tmp/report/ 2>/dev/null
           grep -nE "error:|warning:|FAILED|BUILD|Exception|\.java:[0-9]+" build.log | head -300 > /tmp/report/errors.txt
