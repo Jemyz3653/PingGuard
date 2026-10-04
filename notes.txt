@@ -1,0 +1,32 @@
+screenshot mod_0_normal
+screenshot mod_1_poor
+screenshot mod_2_bad
+screenshot mod_3_critical_a
+screenshot mod_3_critical_b
+screenshot mod_4_not_responding
+pack prompt clicked: true
+pack loaded after 61 ticks
+normal: server sees GOOD 19 ms, pack LOADED
+screenshot vanilla_0_normal_armed
+screenshot vanilla_0b_short_spike_ignored
+screenshot vanilla_1_poor
+screenshot vanilla_2_bad
+forced: server sees CRITICAL 1522 ms, pack LOADED
+screenshot vanilla_3_forced_a
+screenshot vanilla_3_forced_b
+after nether tp: server sees GOOD 1500 ms, pack LOADED
+screenshot vanilla_4_dimension_change_1s
+after grace: server sees CRITICAL 1532 ms, pack LOADED
+screenshot vanilla_4_after_grace
+screenshot vanilla_5_recovered
+screenshot vanilla_6_freeze_30t_hidden
+screenshot vanilla_6_freeze_46t
+screenshot vanilla_6_freeze_54t
+screenshot vanilla_6_after_freeze
+screenshot vanilla_7_foreign_title
+mod client normal: server sees GOOD 21 ms, pack NONE
+screenshot modsrv_0_normal
+screenshot modsrv_1_critical
+screenshot modsrv_2_dimension_change_1s
+screenshot modsrv_3_after_grace
+screenshot modsrv_4_server_silent
