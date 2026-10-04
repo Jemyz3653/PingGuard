@@ -36,7 +36,7 @@ for body in methods:
     if mode == "gui":
         if "itle" not in body:
             continue
-        if not re.search(r"(setTimes|Title|setTitle|resetTitle|clearTitles|tick)\(", head):
+        if not re.search(r"(Times|Title|title|tick|extract|render)\w*\(", head):
             continue
     elif mode == "bitmap":
         if not re.search(r"(advance|Glyph|load|bake|getActualGlyphWidth|width)", body, re.I):
