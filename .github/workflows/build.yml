@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -77,14 +77,18 @@ jobs:
       - name: Client gametests (screenshots)
         id: gametest
         if: steps.build.outputs.code == '0'
-        timeout-minutes: 25
+        timeout-minutes: 22
         run: |
           set +e
-          sudo apt-get update -qq && sudo apt-get install -y -qq xvfb mesa-utils libgl1-mesa-dri > /dev/null
-          xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGameTest --no-daemon 2>&1 | tee gametest.log
+          sudo apt-get update -qq && sudo apt-get install -y -qq mesa-vulkan-drivers > /dev/null
+          for d in build/run/clientGameTest run; do
+            mkdir -p $d && echo "eula=true" > $d/eula.txt
+            printf 'version:4896\npreferredGraphicsBackend:"vulkan"\n' > $d/options.txt
+          done
+          timeout 1080 ./gradlew runClientGameTest --no-daemon 2>&1 | tee gametest.log
           echo "code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
           mkdir -p shots
-          find build/run -path '*screenshots*' \( -name '*.png' -o -name 'notes.txt' \) -exec cp {} shots/ \;
+          find build/run run -path '*screenshots*' \( -name '*.png' -o -name 'notes.txt' \) -exec cp {} shots/ \;
           ls shots
           exit 0
 
