@@ -131,6 +131,7 @@ public class PingGuardClientGameTest implements FabricClientGameTest {
 		try (TestDedicatedServerContext server = context.worldBuilder().createServer();
 				TestDedicatedServerConnection connection = server.connect()) {
 			connection.waitForChunksRender();
+			server.runCommand("/gamemode creative @a");   // the nether teleport below must not kill us
 			PingGuardConfig.get().sendResourcePack = true;
 
 			server.runCommand("/pingguard repack @r");
@@ -216,6 +217,7 @@ public class PingGuardClientGameTest implements FabricClientGameTest {
 		try (TestDedicatedServerContext server = context.worldBuilder().createServer();
 				TestDedicatedServerConnection connection = server.connect()) {
 			connection.waitForChunksRender();
+			server.runCommand("/gamemode creative @a");
 			waitReal(context, 7000);   // the client mod's own join grace
 			serverLevel(server, "mod client normal");
 			shot(context, "modsrv_0_normal");
