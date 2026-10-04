@@ -45,6 +45,18 @@ jobs:
           mkdir -p shots
           find build/run -path '*screenshots*' \( -name '*.png' -o -name 'notes.txt' \) -exec cp {} shots/ \; || true
 
+      - name: Publish screenshots to the test-shots branch
+        if: always() && github.event_name == 'push'
+        run: |
+          set +e
+          cd shots || exit 0
+          git init -q -b test-shots
+          git config user.name "ci"
+          git config user.email "ci@users.noreply.github.com"
+          echo "Screenshots from the client gametests of ${GITHUB_SHA}" > README.md
+          git add -A && git commit -qm "gametest screenshots for ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" test-shots
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
