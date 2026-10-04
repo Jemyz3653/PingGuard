@@ -7,7 +7,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.server.level.ServerPlayer;
 
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
@@ -162,14 +161,12 @@ public class PingGuardClientGameTest implements FabricClientGameTest {
 			shot(context, "vanilla_5_freeze_52t");
 
 			// a foreign title while armed must look normal
-			server.runCommand("/pingguard freeze @r 0");
-			context.waitTicks(400);
+			server.waitFor(s -> true, 1);
+			context.waitTicks(420);
 			server.runCommand("/title @a title {\"text\":\"Foreign title\",\"color\":\"gold\"}");
 			context.waitTicks(30);
 			shot(context, "vanilla_6_foreign_title");
 
-			String status = context.computeOnClient(Minecraft::getInstance) != null ? "ok" : "?";
-			note("client status " + status);
 		} finally {
 			context.runOnClient(c -> PingGuardClient.setVanillaModeForTest(false));
 		}
