@@ -10,6 +10,15 @@ Fabric-мод для сервера Minecraft **26.3**: предупреждае
 
 Пороги настраиваются в `config/pingguard.json`.
 
+<p align="center"><img src="docs/card.gif" width="352" alt="CHECK YOUR INTERNET CONNECTION"></p>
+
+| Ванильный клиент (ресурс-пак) | Клиент с модом |
+|---|---|
+| ![action bar](docs/vanilla-actionbar.png) | ![badge](docs/mod-badge.png) |
+| ![card](docs/vanilla-card.png) | ![not responding](docs/mod-not-responding.png) |
+
+Скриншоты сняты автоматическими тестами в CI: настоящий клиент 26.3 подключается к выделенному серверу с модом.
+
 ## Кто что видит
 
 * **Клиент с Fabric и PingGuard** рисует всё сам: плашку слева сверху и карточку с видео по центру. Таймаут «сервер не отвечает» клиент считает сам.
@@ -60,6 +69,14 @@ Fabric-мод для сервера Minecraft **26.3**: предупреждае
 | `deadManSwitch` | true | невидимая карточка в слоте title (см. выше) |
 | `sendResourcePack` / `requireResourcePack` | true / false | предлагать пак / кикать при отказе |
 | `resourcePackUrl`, `resourcePackSha1`, `publicAddress`, `builtInHttp` | | хостинг пака |
+
+## Тесты
+
+`src/gametest` — клиентские гейм-тесты Fabric. Они запускают клиент, сначала проверяют HUD мода в одиночной игре, затем подключаются к выделенному серверу как ванильный клиент: принимают пак (скачивается с игрового порта), включают `simulate`/`freeze` и снимают скриншоты каждого состояния. В CI скриншоты можно скачать артефактом `gametest-screenshots`.
+
+```
+./gradlew runClientGameTest
+```
 
 ## Сборка
 

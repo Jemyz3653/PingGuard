@@ -3,6 +3,8 @@ name: build
 on:
   push:
     branches: [main]
+    tags: ['v*']
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -22,103 +24,43 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Build
-        id: build
         run: |
           chmod +x gradlew
-          set +e
-          ./gradlew build --stacktrace --no-daemon 2>&1 | tee build.log
-          code=${PIPESTATUS[0]}
-          echo "code=$code" >> "$GITHUB_OUTPUT"
-          exit 0
+          ./gradlew build --stacktrace --no-daemon
 
-      - name: Probe Minecraft API signatures
-        if: always()
+      # Starts a real client + dedicated server, walks through every warning state
+      # and takes screenshots (see src/gametest).
+      - name: Client gametests
+        timeout-minutes: 20
         run: |
-          set +e
-          JAR=$(find ~/.gradle/caches/fabric-loom -name '*.jar' 2>/dev/null | tr '\n' ':')
-          echo "jar: $JAR" > probe.txt
-          for c in \
-            net.minecraft.client.gui.GuiGraphicsExtractor \
-            net.minecraft.network.chat.Style \
-            net.minecraft.network.chat.FontDescription \
-            'net.minecraft.network.chat.FontDescription$Resource' \
-            net.minecraft.network.Connection \
-            net.minecraft.server.network.ServerCommonPacketListenerImpl \
-            net.minecraft.network.protocol.common.ClientboundResourcePackPushPacket \
-            net.minecraft.network.protocol.common.ServerboundResourcePackPacket \
-            net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket \
-            net.minecraft.network.protocol.game.ClientboundClearTitlesPacket \
-            net.minecraft.client.multiplayer.PlayerInfo \
-            net.minecraft.server.permissions.PermissionLevel ; do
-            echo "=== $c" >> probe.txt
-            javap -p -cp "$JAR" "$c" >> probe.txt 2>&1
-          done
-          ls ~/.gradle/caches/fabric-loom 2>/dev/null >> probe.txt
-
-      - name: Probe behaviour facts
-        if: always()
-        run: |
-          set +e
-          CP=$(find ~/.gradle/caches/fabric-loom -name '*.jar' 2>/dev/null | tr '\n' ':')
-          mkdir -p /tmp/mc && for j in $(find ~/.gradle/caches/fabric-loom/26.3 -name '*.jar'); do unzip -qo "$j" 'net/minecraft/*' -d /tmp/mc 2>/dev/null; done
-          for f in $(grep -rl --include=*.class -a "itleFadeIn\|titleStay\|TitleFade" /tmp/mc | head -10); do
-            c=${f#/tmp/mc/}; c=${c%.class}; c=${c//\//.}
-            echo "=== facts $c" >> probe.txt
-            javap -p -c -cp "$CP" "$c" > /tmp/gui.txt 2>&1
-            python3 tools/ci_facts.py /tmp/gui.txt gui >> probe.txt
-          done
-          for k in $(find ~/.gradle/caches/fabric-loom -name '*.jar' -exec unzip -l {} \; 2>/dev/null | grep -o 'net/minecraft/client/gui/font/providers/BitmapProvider[^ ]*\.class' | sort -u); do
-            c=${k%.class}; c=${c//\//.}
-            javap -p -c -cp "$CP" "$c" > /tmp/bp.txt 2>&1
-            echo "=== facts $c" >> probe.txt
-            python3 tools/ci_facts.py /tmp/bp.txt bitmap >> probe.txt
-          done
-
-      - name: Client gametests (screenshots)
-        id: gametest
-        if: steps.build.outputs.code == '0'
-        timeout-minutes: 22
-        run: |
-          set +e
           sudo apt-get update -qq && sudo apt-get install -y -qq mesa-vulkan-drivers > /dev/null
-          for d in build/run/clientGameTest run; do
-            mkdir -p $d && echo "eula=true" > $d/eula.txt
-            printf 'version:4896\npreferredGraphicsBackend:"vulkan"\n' > $d/options.txt
-          done
-          timeout 1080 ./gradlew runClientGameTest --no-daemon 2>&1 | tee gametest.log
-          echo "code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
-          mkdir -p shots
-          find build/run run -path '*screenshots*' \( -name '*.png' -o -name 'notes.txt' \) -exec cp {} shots/ \;
-          ls shots
-          exit 0
+          mkdir -p build/run/clientGameTest
+          echo "eula=true" > build/run/clientGameTest/eula.txt
+          printf 'version:4896\npreferredGraphicsBackend:"vulkan"\n' > build/run/clientGameTest/options.txt
+          ./gradlew runClientGameTest --no-daemon
 
-      - name: Upload jars
-        if: steps.build.outputs.code == '0'
-        uses: actions/upload-artifact@v4
+      - name: Collect screenshots
+        if: always()
+        run: |
+          mkdir -p shots
+          find build/run -path '*screenshots*' \( -name '*.png' -o -name 'notes.txt' \) -exec cp {} shots/ \; || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gametest-screenshots
+          path: shots
+
+      - uses: actions/upload-artifact@v4
         with:
           name: PingGuard
           path: build/libs/*
 
-      - name: Publish CI report branch
-        if: always()
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set +e
-          mkdir -p /tmp/report
-          cp build.log probe.txt /tmp/report/ 2>/dev/null
-          cp -r shots /tmp/report/ 2>/dev/null
-          grep -E "PingGuardTest|PingGuard|ERROR|Exception|Mixin|mixin|FAILED|text.vsh|shader" gametest.log | head -400 > /tmp/report/gametest_excerpt.txt 2>/dev/null
-          tail -150 gametest.log > /tmp/report/gametest_tail.txt 2>/dev/null
-          grep -nE "error:|warning:|FAILED|BUILD|Exception|\.java:[0-9]+" build.log | head -300 > /tmp/report/errors.txt
-          cp build/libs/*.jar build/libs/*.zip /tmp/report/ 2>/dev/null
-          cd /tmp/report
-          git init -q -b ci-report
-          git config user.name "ci"
-          git config user.email "ci@users.noreply.github.com"
-          echo "build exit code: ${{ steps.build.outputs.code }} (commit ${{ github.sha }})" > STATUS.txt
-          git add -A
-          git commit -qm "CI report for ${{ github.sha }}"
-          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" ci-report
-
-      - name: Fail if build failed
-        if: steps.build.outputs.code != '0'
-        run: exit 1
+          gh release create "${GITHUB_REF_NAME}" build/libs/pingguard-*.jar build/libs/PingGuard-ResourcePack-*.zip \
+            --title "PingGuard ${GITHUB_REF_NAME}" --notes-file .github/release-notes.md || \
+          gh release upload "${GITHUB_REF_NAME}" build/libs/pingguard-*.jar build/libs/PingGuard-ResourcePack-*.zip --clobber
