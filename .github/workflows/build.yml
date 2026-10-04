@@ -35,7 +35,7 @@ jobs:
         if: always()
         run: |
           set +e
-          JAR=$(find ~/.gradle/caches -name '*.jar' -path '*minecraft*' 2>/dev/null | while read j; do unzip -l "$j" 2>/dev/null | grep -q 'net/minecraft/client/gui/Gui.class' && echo "$j"; done | head -1)
+          JAR=$(find ~/.gradle/caches/fabric-loom -name '*.jar' 2>/dev/null | tr '\n' ':')
           echo "jar: $JAR" > probe.txt
           for c in \
             net.minecraft.client.gui.GuiGraphicsExtractor \
@@ -55,18 +55,18 @@ jobs:
           done
           ls ~/.gradle/caches/fabric-loom 2>/dev/null >> probe.txt
 
-      - name: Probe behaviour (job log only)
+      - name: Probe behaviour facts
         if: always()
         run: |
           set +e
-          JAR=$(find ~/.gradle/caches -name '*.jar' -path '*minecraft*' 2>/dev/null | while read j; do unzip -l "$j" 2>/dev/null | grep -q 'net/minecraft/client/gui/Gui.class' && echo "$j"; done | head -1)
-          javap -p -c -cp "$JAR" net.minecraft.client.gui.Gui > /tmp/gui.txt 2>&1
-          echo "::group::Gui title members"; grep -n "itle" /tmp/gui.txt | head -80; echo "::endgroup::"
-          echo "::group::Gui.setTimes"; awk '/void setTimes\(/,/^$/' /tmp/gui.txt; echo "::endgroup::"
-          echo "::group::Gui title render"; awk '/Title\(net.minecraft.client.gui.GuiGraphicsExtractor/,/^$/' /tmp/gui.txt | head -200; echo "::endgroup::"
-          for c in $(unzip -l "$JAR" | grep -o 'net/minecraft/client/gui/font/providers/BitmapProvider[^ ]*\.class'); do
-            k=${c%.class}; k=${k//\//.}
-            echo "::group::$k"; javap -p -c -cp "$JAR" "$k" | head -400; echo "::endgroup::"
+          CP=$(find ~/.gradle/caches/fabric-loom -name '*.jar' 2>/dev/null | tr '\n' ':')
+          javap -p -c -cp "$CP" net.minecraft.client.gui.Gui > /tmp/gui.txt 2>&1
+          python3 tools/ci_facts.py /tmp/gui.txt gui >> probe.txt
+          for k in $(find ~/.gradle/caches/fabric-loom -name '*.jar' -exec unzip -l {} \; 2>/dev/null | grep -o 'net/minecraft/client/gui/font/providers/BitmapProvider[^ ]*\.class' | sort -u); do
+            c=${k%.class}; c=${c//\//.}
+            javap -p -c -cp "$CP" "$c" > /tmp/bp.txt 2>&1
+            echo "=== facts $c" >> probe.txt
+            python3 tools/ci_facts.py /tmp/bp.txt bitmap >> probe.txt
           done
 
       - name: Upload jars

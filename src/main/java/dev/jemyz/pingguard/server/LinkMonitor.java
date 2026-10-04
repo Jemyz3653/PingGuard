@@ -25,6 +25,7 @@ import dev.jemyz.pingguard.CardLayout;
 import dev.jemyz.pingguard.LinkLevel;
 import dev.jemyz.pingguard.PingGuard;
 import dev.jemyz.pingguard.PingGuardConfig;
+import dev.jemyz.pingguard.mixin.ServerCommonPacketListenerImplAccessor;
 import dev.jemyz.pingguard.net.HelloPayload;
 import dev.jemyz.pingguard.net.RttPayload;
 
@@ -91,7 +92,7 @@ public final class LinkMonitor {
 		PingGuardConfig cfg = PingGuardConfig.get();
 		if (!cfg.sendResourcePack) return;
 
-		Optional<PackHost.Offer> offer = PackHost.offerFor(player.connection.getConnection());
+		Optional<PackHost.Offer> offer = PackHost.offerFor(connectionOf(player));
 
 		if (offer.isEmpty()) {
 			return;
@@ -318,8 +319,11 @@ public final class LinkMonitor {
 	}
 
 	private static boolean isLocal(ServerPlayer player) {
-		Connection connection = player.connection.getConnection();
-		return connection.isMemoryConnection();
+		return connectionOf(player).isMemoryConnection();
+	}
+
+	public static Connection connectionOf(ServerPlayer player) {
+		return ((ServerCommonPacketListenerImplAccessor) player.connection).pingguard$connection();
 	}
 
 	// ------------------------------------------------------------------ commands
