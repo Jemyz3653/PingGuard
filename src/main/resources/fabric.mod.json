@@ -1,0 +1,33 @@
+{
+	"schemaVersion": 1,
+	"id": "pingguard",
+	"version": "${version}",
+	"name": "PingGuard",
+	"description": "Warns players about a bad connection: 'POOR CONNECTION' above 500 ms, a 'CHECK YOUR INTERNET CONNECTION' video card above 1000 ms or when the server stops answering. Works for vanilla players through a built-in resource pack.",
+	"authors": [
+		"Jemyz"
+	],
+	"contact": {
+		"sources": "https://github.com/Jemyz3653/PingGuard"
+	},
+	"license": "MIT",
+	"icon": "assets/pingguard/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"dev.jemyz.pingguard.PingGuard"
+		],
+		"client": [
+			"dev.jemyz.pingguard.client.PingGuardClient"
+		]
+	},
+	"mixins": [
+		"pingguard.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

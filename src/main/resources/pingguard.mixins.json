@@ -1,0 +1,16 @@
+{
+	"required": true,
+	"package": "dev.jemyz.pingguard.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"mixins": [
+		"ConnectionMixin",
+		"ServerCommonPacketListenerImplMixin",
+		"ServerHandshakePacketListenerImplMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}

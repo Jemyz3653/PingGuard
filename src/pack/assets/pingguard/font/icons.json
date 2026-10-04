@@ -1,0 +1,50 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "pingguard:font/signal_poor.png",
+      "height": 9,
+      "ascent": 8,
+      "chars": [
+        "\ue200"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "pingguard:font/signal_bad.png",
+      "height": 9,
+      "ascent": 8,
+      "chars": [
+        "\ue201"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "pingguard:font/signal_lost.png",
+      "height": 9,
+      "ascent": 8,
+      "chars": [
+        "\ue202"
+      ]
+    },
+    {
+      "type": "space",
+      "advances": {
+        "\uf800": -1,
+        "\uf801": -2,
+        "\uf802": -4,
+        "\uf803": -8,
+        "\uf804": -16,
+        "\uf805": -32,
+        "\uf806": -64,
+        "\uf807": 1,
+        "\uf808": 2,
+        "\uf809": 4,
+        "\uf80a": 8,
+        "\uf80b": 16,
+        "\uf80c": 32,
+        "\uf80d": 64
+      }
+    }
+  ]
+}

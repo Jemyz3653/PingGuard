@@ -1,0 +1,77 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+base {
+	archivesName = "pingguard"
+}
+
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		"pingguard" {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+// ---------------------------------------------------------------------------
+// The server resource pack for vanilla clients lives in src/pack. It is zipped
+// reproducibly (stable SHA-1) and embedded in the jar as /pingguard/pack.zip.
+// ---------------------------------------------------------------------------
+def packOut = layout.buildDirectory.dir("generated/pack")
+
+tasks.register('packZip', Zip) {
+	from 'src/pack'
+	archiveFileName = 'pack.zip'
+	destinationDirectory = packOut.map { it.dir('pingguard') }
+	preserveFileTimestamps = false
+	reproducibleFileOrder = true
+}
+
+tasks.register('packRelease', Copy) {
+	dependsOn 'packZip'
+	from packOut.map { it.file('pingguard/pack.zip') }
+	into layout.buildDirectory.dir('libs')
+	rename { "PingGuard-ResourcePack-${project.version}.zip" }
+}
+
+sourceSets.main.resources.srcDir(packOut)
+processResources.dependsOn 'packZip'
+tasks.named('build') { dependsOn 'packRelease' }
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+	it.options.encoding = 'UTF-8'
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+jar {
+	from("LICENSE") {
+		rename { "${it}_pingguard" }
+	}
+	from("tools/fonts/OFL.txt") {
+		rename { "ORBITRON_OFL.txt" }
+	}
+}

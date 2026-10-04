@@ -1,0 +1,10 @@
+{
+  "pack": {
+    "description": {
+      "text": "PingGuard - connection warnings",
+      "color": "aqua"
+    },
+    "min_format": 97,
+    "max_format": 97
+  }
+}

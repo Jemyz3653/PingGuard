@@ -1,0 +1,81 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "pingguard:font/card_frames.png",
+      "height": 22,
+      "ascent": 12,
+      "chars": [
+        "\ue000",
+        "\ue001",
+        "\ue002",
+        "\ue003",
+        "\ue004",
+        "\ue005",
+        "\ue006",
+        "\ue007",
+        "\ue008",
+        "\ue009",
+        "\ue00a",
+        "\ue00b",
+        "\ue00c",
+        "\ue00d",
+        "\ue00e",
+        "\ue00f",
+        "\ue010",
+        "\ue011",
+        "\ue012",
+        "\ue013",
+        "\ue014",
+        "\ue015",
+        "\ue016"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "pingguard:font/card_band.png",
+      "height": 8,
+      "ascent": -10,
+      "chars": [
+        "\ue100"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "pingguard:font/card_line1.png",
+      "height": 3,
+      "ascent": -11,
+      "chars": [
+        "\ue110\ue111"
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "pingguard:font/card_line2.png",
+      "height": 3,
+      "ascent": -14,
+      "chars": [
+        "\ue120\ue121\ue122"
+      ]
+    },
+    {
+      "type": "space",
+      "advances": {
+        "\uf800": -1,
+        "\uf801": -2,
+        "\uf802": -4,
+        "\uf803": -8,
+        "\uf804": -16,
+        "\uf805": -32,
+        "\uf806": -64,
+        "\uf807": 1,
+        "\uf808": 2,
+        "\uf809": 4,
+        "\uf80a": 8,
+        "\uf80b": 16,
+        "\uf80c": 32,
+        "\uf80d": 64
+      }
+    }
+  ]
+}
