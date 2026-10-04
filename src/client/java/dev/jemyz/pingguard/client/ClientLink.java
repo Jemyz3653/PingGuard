@@ -29,6 +29,12 @@ public final class ClientLink {
 	private static long criticalSince = -1;
 	private static boolean active;
 
+	// test hooks (client gametests)
+	private static LinkLevel forcedLevel;
+	private static long forcedMs;
+	private static boolean forcedSilent;
+	private static boolean disabled;
+
 	private ClientLink() {
 	}
 
@@ -66,7 +72,22 @@ public final class ClientLink {
 		lastRttAt = System.currentTimeMillis();
 	}
 
+	/** Gametests: pretend the connection is in this state ({@code null} = back to normal). */
+	public static void forceForTest(LinkLevel level, long ms, boolean silentServer) {
+		forcedLevel = level;
+		forcedMs = ms;
+		forcedSilent = silentServer;
+		criticalSince = level == LinkLevel.CRITICAL ? System.currentTimeMillis() : -1;
+	}
+
+	/** Gametests: behave like a client without the mod. */
+	public static void setDisabled(boolean value) {
+		disabled = value;
+	}
+
 	public static void tick(Minecraft mc) {
+		if (forcedLevel != null) return;
+
 		if (!active || mc.player == null || mc.hasSingleplayerServer()) {
 			TRACKER.reset();
 			criticalSince = -1;
@@ -109,16 +130,17 @@ public final class ClientLink {
 	}
 
 	public static LinkLevel level() {
-		return TRACKER.shown();
+		if (disabled) return LinkLevel.GOOD;
+		return forcedLevel != null ? forcedLevel : TRACKER.shown();
 	}
 
 	public static long effectiveMs() {
-		return effectiveMs;
+		return forcedLevel != null ? forcedMs : effectiveMs;
 	}
 
 	/** True when the warning is caused by the server not answering at all. */
 	public static boolean silent() {
-		return silent;
+		return forcedLevel != null ? forcedSilent : silent;
 	}
 
 	public static long criticalSince() {

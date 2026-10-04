@@ -74,6 +74,20 @@ jobs:
             python3 tools/ci_facts.py /tmp/bp.txt bitmap >> probe.txt
           done
 
+      - name: Client gametests (screenshots)
+        id: gametest
+        if: steps.build.outputs.code == '0'
+        timeout-minutes: 25
+        run: |
+          set +e
+          sudo apt-get update -qq && sudo apt-get install -y -qq xvfb mesa-utils libgl1-mesa-dri > /dev/null
+          xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClientGameTest --no-daemon 2>&1 | tee gametest.log
+          echo "code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          mkdir -p shots
+          find build/run -path '*screenshots*' \( -name '*.png' -o -name 'notes.txt' \) -exec cp {} shots/ \;
+          ls shots
+          exit 0
+
       - name: Upload jars
         if: steps.build.outputs.code == '0'
         uses: actions/upload-artifact@v4
@@ -87,6 +101,9 @@ jobs:
           set +e
           mkdir -p /tmp/report
           cp build.log probe.txt /tmp/report/ 2>/dev/null
+          cp -r shots /tmp/report/ 2>/dev/null
+          grep -E "PingGuardTest|PingGuard|ERROR|Exception|Mixin|mixin|FAILED|text.vsh|shader" gametest.log | head -400 > /tmp/report/gametest_excerpt.txt 2>/dev/null
+          tail -150 gametest.log > /tmp/report/gametest_tail.txt 2>/dev/null
           grep -nE "error:|warning:|FAILED|BUILD|Exception|\.java:[0-9]+" build.log | head -300 > /tmp/report/errors.txt
           cp build/libs/*.jar build/libs/*.zip /tmp/report/ 2>/dev/null
           cd /tmp/report

@@ -1,0 +1,15 @@
+{
+	"schemaVersion": 1,
+	"id": "pingguard-test",
+	"version": "1.0.0",
+	"name": "PingGuard client gametests",
+	"environment": "*",
+	"entrypoints": {
+		"fabric-client-gametest": [
+			"dev.jemyz.pingguard.test.PingGuardClientGameTest"
+		]
+	},
+	"depends": {
+		"pingguard": "*"
+	}
+}
