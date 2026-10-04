@@ -26,9 +26,13 @@ import dev.jemyz.pingguard.server.PlayerLink;
  * Renders every PingGuard state and saves screenshots (build/run/clientGameTest/screenshots).
  * 1) client mod HUD in singleplayer (forced states)
  * 2) vanilla path end-to-end against a dedicated server: pack download over the game port,
- *    action bar, server-forced card and the client-side "dead man" card.
+ *    action bar, server-forced card, the client-side "dead man" card, dimension change grace
+ * 3) client mod against a dedicated server: real RTT stream, dimension change grace
  */
 public class PingGuardClientGameTest implements FabricClientGameTest {
+	private static final String TO_NETHER = "/execute in minecraft:the_nether run tp @r 0 100 0";
+	private static final String TO_OVERWORLD = "/execute in minecraft:overworld run tp @r 0 100 0";
+
 	private final List<String> notes = new ArrayList<>();
 	private Path shotDir;
 
@@ -37,19 +41,26 @@ public class PingGuardClientGameTest implements FabricClientGameTest {
 		context.getInput().resizeWindow(1280, 720);
 		context.runOnClient(client -> client.options.guiScale().set(2));
 
-		try {
-			modHud(context);
-		} catch (Throwable t) {
-			note("modHud FAILED: " + t);
-		}
-
-		try {
-			vanillaEndToEnd(context);
-		} catch (Throwable t) {
-			note("vanillaEndToEnd FAILED: " + t);
-		}
+		run("modHud", () -> modHud(context));
+		run("vanillaEndToEnd", () -> vanillaEndToEnd(context));
+		run("modEndToEnd", () -> modEndToEnd(context));
 
 		writeNotes();
+	}
+
+	private void run(String name, Runnable r) {
+		try {
+			r.run();
+		} catch (Throwable t) {
+			note(name + " FAILED: " + t);
+			t.printStackTrace();
+		}
+	}
+
+	/** The server side works in real time (debounce, grace); game ticks in tests can run faster or slower. */
+	private static void waitReal(ClientGameTestContext context, long ms) {
+		long until = System.currentTimeMillis() + ms;
+		context.waitFor(c -> System.currentTimeMillis() >= until, 20 * 120);
 	}
 
 	private void shot(ClientGameTestContext context, String name) {
@@ -71,6 +82,18 @@ public class PingGuardClientGameTest implements FabricClientGameTest {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private void serverLevel(TestDedicatedServerContext server, String label) {
+		server.waitFor(s -> {
+			if (!s.getPlayerList().getPlayers().isEmpty()) {
+				ServerPlayer p = s.getPlayerList().getPlayers().get(0);
+				PlayerLink link = LinkMonitor.get(p);
+				note(label + ": server sees " + (link == null ? "no link" : link.level() + " " + link.effectiveMs() + " ms, pack " + link.pack()));
+			}
+
+			return true;
+		}, 5);
 	}
 
 	private void modHud(ClientGameTestContext context) {
@@ -127,48 +150,92 @@ public class PingGuardClientGameTest implements FabricClientGameTest {
 			}, 1200);
 			note("pack loaded after " + waited + " ticks");
 			context.waitTicks(100);
-			context.waitTicks(40);
+			waitReal(context, 1000);
+			serverLevel(server, "normal");
 			shot(context, "vanilla_0_normal_armed");
 
+			// one short spike must NOT show anything (debounce)
+			server.runCommand("/pingguard simulate @r 1500");
+			waitReal(context, 600);
+			server.runCommand("/pingguard simulate @r 0");
+			waitReal(context, 1500);
+			shot(context, "vanilla_0b_short_spike_ignored");
+
 			server.runCommand("/pingguard simulate @r 600");
-			context.waitTicks(30);
+			waitReal(context, 2200);
 			shot(context, "vanilla_1_poor");
 
 			server.runCommand("/pingguard simulate @r 850");
-			context.waitTicks(30);
+			waitReal(context, 2200);
 			shot(context, "vanilla_2_bad");
 
 			server.runCommand("/pingguard simulate @r 1500");
-			context.waitTicks(25);
+			waitReal(context, 2200);
+			serverLevel(server, "forced");
 			shot(context, "vanilla_3_forced_a");
 			context.waitTicks(7);
 			shot(context, "vanilla_3_forced_b");
-			context.waitTicks(11);
-			shot(context, "vanilla_3_forced_c");
+
+			// dimension change: everything must disappear for the grace period, then come back
+			server.runCommand(TO_NETHER);
+			waitReal(context, 1200);
+			serverLevel(server, "after nether tp");
+			shot(context, "vanilla_4_dimension_change_1s");
+			waitReal(context, 5500);
+			serverLevel(server, "after grace");
+			shot(context, "vanilla_4_after_grace");
 
 			server.runCommand("/pingguard simulate @r 0");
-			context.waitTicks(80);
-			shot(context, "vanilla_4_recovered");
+			server.runCommand(TO_OVERWORLD);
+			waitReal(context, 6500);
+			shot(context, "vanilla_5_recovered");
 
-			server.runCommand("/pingguard freeze @r 20");
-			context.waitTicks(12);
-			shot(context, "vanilla_5_freeze_12t_hidden");
-			context.waitTicks(20);
-			shot(context, "vanilla_5_freeze_32t");
-			context.waitTicks(6);
-			shot(context, "vanilla_5_freeze_38t");
-			context.waitTicks(14);
-			shot(context, "vanilla_5_freeze_52t");
+			// dead man: the server stops sending anything to this player
+			server.runCommand("/pingguard freeze @r 8");
+			context.waitTicks(30);
+			shot(context, "vanilla_6_freeze_30t_hidden");
+			context.waitTicks(16);
+			shot(context, "vanilla_6_freeze_46t");
+			context.waitTicks(8);
+			shot(context, "vanilla_6_freeze_54t");
+			waitReal(context, 9000);
+			shot(context, "vanilla_6_after_freeze");
 
 			// a foreign title while armed must look normal
-			server.waitFor(s -> true, 1);
-			context.waitTicks(420);
 			server.runCommand("/title @a title {\"text\":\"Foreign title\",\"color\":\"gold\"}");
 			context.waitTicks(30);
-			shot(context, "vanilla_6_foreign_title");
-
+			shot(context, "vanilla_7_foreign_title");
 		} finally {
 			context.runOnClient(c -> PingGuardClient.setVanillaModeForTest(false));
+		}
+	}
+
+	private void modEndToEnd(ClientGameTestContext context) {
+		PingGuardConfig.get().joinGraceMs = 0;
+
+		try (TestDedicatedServerContext server = context.worldBuilder().createServer();
+				TestDedicatedServerConnection connection = server.connect()) {
+			connection.waitForChunksRender();
+			waitReal(context, 7000);   // the client mod's own join grace
+			serverLevel(server, "mod client normal");
+			shot(context, "modsrv_0_normal");
+
+			server.runCommand("/pingguard simulate @r 1500");
+			waitReal(context, 3000);
+			shot(context, "modsrv_1_critical");
+
+			server.runCommand(TO_NETHER);
+			waitReal(context, 1200);
+			shot(context, "modsrv_2_dimension_change_1s");
+			waitReal(context, 5500);
+			shot(context, "modsrv_3_after_grace");
+
+			server.runCommand("/pingguard simulate @r 0");
+			waitReal(context, 3000);
+
+			server.runCommand("/pingguard freeze @r 8");
+			waitReal(context, 4500);
+			shot(context, "modsrv_4_server_silent");
 		}
 	}
 }

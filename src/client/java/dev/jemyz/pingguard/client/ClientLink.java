@@ -17,7 +17,11 @@ public final class ClientLink {
 	private static int criticalMs = 1000;
 	private static int intervalMs = 500;
 	private static int recoverMs = 2000;
+	private static int confirmMs = 1500;
+	private static int levelGraceMs = 3000;
 	private static final int JOIN_GRACE_MS = 6000;
+	/** Servers without PingGuard: how long "nothing received" is tolerated on top of the ping. */
+	private static final int FALLBACK_SILENCE_MS = 2000;
 
 	private static boolean serverHasMod;
 	private static long joinedAt;
@@ -28,6 +32,8 @@ public final class ClientLink {
 	private static final LinkLevel.Tracker TRACKER = new LinkLevel.Tracker();
 	private static long criticalSince = -1;
 	private static boolean active;
+	private static Object lastLevel;
+	private static long graceUntil;
 
 	// test hooks (client gametests)
 	private static LinkLevel forcedLevel;
@@ -46,6 +52,8 @@ public final class ClientLink {
 		TRACKER.reset();
 		criticalSince = -1;
 		active = true;
+		lastLevel = null;
+		graceUntil = 0;
 		ClientPacketClock.mark();
 	}
 
@@ -63,6 +71,8 @@ public final class ClientLink {
 		criticalMs = hello.criticalMs();
 		intervalMs = Math.max(50, hello.intervalMs());
 		recoverMs = hello.recoverMs();
+		confirmMs = hello.confirmMs();
+		levelGraceMs = hello.levelChangeGraceMs();
 		lastRttAt = System.currentTimeMillis();
 	}
 
@@ -95,6 +105,23 @@ public final class ClientLink {
 		}
 
 		long now = System.currentTimeMillis();
+
+		// dimension change / respawn: a new ClientLevel. Loading it stalls everything for a moment.
+		if (mc.level != lastLevel) {
+			if (lastLevel != null) startGrace(now);
+			lastLevel = mc.level;
+		}
+
+		if (now < graceUntil) {
+			TRACKER.reset();
+			criticalSince = -1;
+			effectiveMs = 0;
+			silent = false;
+			lastRttAt = now;
+			ClientPacketClock.mark();
+			return;
+		}
+
 		long base;
 		long quiet;
 
@@ -105,7 +132,7 @@ public final class ClientLink {
 		} else {
 			// Server without PingGuard: tab-list latency + "nothing received for a while".
 			base = tabLatency(mc);
-			quiet = ClientPacketClock.sinceLastMs() - 1000;
+			quiet = ClientPacketClock.sinceLastMs() - FALLBACK_SILENCE_MS;
 		}
 
 		silent = quiet > base && quiet >= criticalMs;
@@ -113,13 +140,17 @@ public final class ClientLink {
 
 		LinkLevel raw = LinkLevel.classify(effectiveMs, poorMs, badMs, criticalMs);
 		if (now - joinedAt < JOIN_GRACE_MS) raw = LinkLevel.GOOD;
-		LinkLevel level = TRACKER.update(raw, now, recoverMs);
+		LinkLevel level = TRACKER.update(raw, now, confirmMs, recoverMs);
 
 		if (level == LinkLevel.CRITICAL) {
 			if (criticalSince < 0) criticalSince = now;
 		} else {
 			criticalSince = -1;
 		}
+	}
+
+	private static void startGrace(long now) {
+		graceUntil = now + levelGraceMs;
 	}
 
 	private static long tabLatency(Minecraft mc) {

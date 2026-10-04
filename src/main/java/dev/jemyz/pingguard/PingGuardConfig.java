@@ -23,12 +23,19 @@ public final class PingGuardConfig {
 	public int badPingMs = 700;
 	/** Ping (or time without any answer from the client) at which the video card is shown. */
 	public int criticalPingMs = 1000;
+	/** How long a bad ping has to last before a warning appears (filters single slow packets). */
+	public int confirmMs = 1500;
 	/** How long the connection has to stay better before the warning goes away. */
 	public int recoverMs = 2000;
-	/** How often the server measures ping, in ticks (10 = twice a second). */
+	/**
+	 * How often the ping is measured, in ticks of 50 ms (10 = twice a second). Measured on PingGuard's
+	 * own thread, so server lag (low TPS) does not slow it down or cause false warnings.
+	 */
 	public int pingIntervalTicks = 10;
 	/** No warnings for this long after a player joins (chunk loading makes the first seconds noisy). */
 	public int joinGraceMs = 6000;
+	/** No warnings for this long after a player changes dimension or respawns. */
+	public int levelChangeGraceMs = 3000;
 	/** Show the ping number next to the warning. */
 	public boolean showPingNumber = true;
 
@@ -59,6 +66,10 @@ public final class PingGuardConfig {
 	public String publicAddress = "";
 	/** Serve the pack over HTTP on the Minecraft port. */
 	public boolean builtInHttp = true;
+
+	public int pingIntervalMs() {
+		return pingIntervalTicks * 50;
+	}
 
 	public static PingGuardConfig get() {
 		return instance;
@@ -105,7 +116,9 @@ public final class PingGuardConfig {
 		poorPingMs = clamp(poorPingMs, 50, 60000);
 		badPingMs = clamp(badPingMs, poorPingMs, 60000);
 		criticalPingMs = clamp(criticalPingMs, badPingMs, 60000);
+		confirmMs = clamp(confirmMs, 0, 60000);
 		recoverMs = clamp(recoverMs, 0, 60000);
+		levelChangeGraceMs = clamp(levelChangeGraceMs, 0, 60000);
 		pingIntervalTicks = clamp(pingIntervalTicks, 2, 100);
 		joinGraceMs = clamp(joinGraceMs, 0, 60000);
 		if (resourcePackPrompt == null) resourcePackPrompt = "";

@@ -26,6 +26,7 @@ import dev.jemyz.pingguard.PingGuardConfig;
  * /pingguard status
  * /pingguard simulate &lt;player&gt; &lt;extraMs&gt;     add fake ping (0 = off)
  * /pingguard freeze &lt;player&gt; &lt;seconds&gt;       stop sending PingGuard packets, like a dead server
+ * /pingguard lagtest &lt;ms&gt;                      freeze the server thread for a moment: no warning must appear
  * /pingguard reload
  */
 public final class PingGuardCommand {
@@ -45,6 +46,9 @@ public final class PingGuardCommand {
 						.then(argument("player", EntityArgument.player())
 								.then(argument("seconds", IntegerArgumentType.integer(1, 60))
 										.executes(PingGuardCommand::freeze))))
+				.then(literal("lagtest")
+						.then(argument("ms", IntegerArgumentType.integer(100, 10000))
+								.executes(PingGuardCommand::lagtest)))
 				.then(literal("repack")
 						.then(argument("player", EntityArgument.player())
 								.executes(PingGuardCommand::repack)))
@@ -94,7 +98,7 @@ public final class PingGuardCommand {
 	private static int simulate(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
 		ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
 		int extra = IntegerArgumentType.getInteger(ctx, "extraMs");
-		LinkMonitor.simulate(player, extra);
+		if (!LinkMonitor.simulate(player, extra)) return notTracked(ctx, player);
 		ctx.getSource().sendSuccess(() -> Component.literal(extra == 0
 				? "PingGuard: simulation off for " + player.getName().getString()
 				: "PingGuard: +" + extra + " ms fake ping for " + player.getName().getString()), true);
@@ -104,9 +108,30 @@ public final class PingGuardCommand {
 	private static int freeze(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
 		ServerPlayer player = EntityArgument.getPlayer(ctx, "player");
 		int seconds = IntegerArgumentType.getInteger(ctx, "seconds");
-		LinkMonitor.freeze(player, seconds);
+		if (!LinkMonitor.freeze(player, seconds)) return notTracked(ctx, player);
 		ctx.getSource().sendSuccess(() -> Component.literal("PingGuard: pretending the server is dead for "
 				+ player.getName().getString() + " (" + seconds + " s)"), true);
+		return Command.SINGLE_SUCCESS;
+	}
+
+	private static int notTracked(CommandContext<CommandSourceStack> ctx, ServerPlayer player) {
+		ctx.getSource().sendFailure(Component.literal("PingGuard does not track " + player.getName().getString()
+				+ " (singleplayer host / local connection)"));
+		return 0;
+	}
+
+	private static int lagtest(CommandContext<CommandSourceStack> ctx) {
+		int ms = IntegerArgumentType.getInteger(ctx, "ms");
+		ctx.getSource().sendSuccess(() -> Component.literal("PingGuard: blocking the server thread for " + ms
+				+ " ms - nobody should get a connection warning"), true);
+		// runs on the server thread right after this command: the whole server stands still
+		ctx.getSource().getServer().execute(() -> {
+			try {
+				Thread.sleep(ms);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+		});
 		return Command.SINGLE_SUCCESS;
 	}
 

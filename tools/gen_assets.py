@@ -789,9 +789,9 @@ SHADER_TEMPLATE = r'''#version 330
 // PingGuard: vanilla minecraft:core/text.vsh (26.3) + connection-warning card logic.
 // Glyphs coloured #FE50xx / #FE51xx are PingGuard card glyphs. The title alpha is used
 // as a clock (see PingGuard README / VanillaCard.java):
-//   #FE50xx  "armed"  : title fades in over 510 ticks (alpha +1 every 2 ticks). The server
-//                        restarts it every 10 ticks, so alpha stays tiny and the card hidden.
-//                        If the server goes silent, alpha keeps growing -> card appears.
+//   #FE50xx  "armed"  : title fades in over 510 ticks (alpha +1 every 2 ticks). PingGuard
+//                        restarts it every 250 ms from its own thread, so alpha stays tiny and the
+//                        card hidden. If nothing arrives for 2 s, alpha keeps growing -> card appears.
 //   #FE51xx  "forced" : title fades out over 510 ticks from alpha 255; always visible.
 //   xx = frame id (0..%(nframes_minus1)d) or 255 for always-visible parts (band, text).
 
@@ -860,7 +860,7 @@ void main() {
 }
 '''
 
-REVEAL_ALPHA = 11   # 22 ticks (1.1 s) without a refresh from the server
+REVEAL_ALPHA = 20   # 40 ticks (2 s) without any refresh from the server -> no flicker on jittery links
 
 
 def write_shader(timeline, n):

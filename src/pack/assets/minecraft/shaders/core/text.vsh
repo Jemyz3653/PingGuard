@@ -4,9 +4,9 @@
 // PingGuard: vanilla minecraft:core/text.vsh (26.3) + connection-warning card logic.
 // Glyphs coloured #FE50xx / #FE51xx are PingGuard card glyphs. The title alpha is used
 // as a clock (see PingGuard README / VanillaCard.java):
-//   #FE50xx  "armed"  : title fades in over 510 ticks (alpha +1 every 2 ticks). The server
-//                        restarts it every 10 ticks, so alpha stays tiny and the card hidden.
-//                        If the server goes silent, alpha keeps growing -> card appears.
+//   #FE50xx  "armed"  : title fades in over 510 ticks (alpha +1 every 2 ticks). PingGuard
+//                        restarts it every 250 ms from its own thread, so alpha stays tiny and the
+//                        card hidden. If nothing arrives for 2 s, alpha keeps growing -> card appears.
 //   #FE51xx  "forced" : title fades out over 510 ticks from alpha 255; always visible.
 //   xx = frame id (0..22) or 255 for always-visible parts (band, text).
 
@@ -34,7 +34,7 @@ layout(location = 1) out float cylindricalVertexDistance;
 layout(location = 2) out vec4 vertexColor;
 layout(location = 3) out vec2 texCoord0;
 
-const int PG_REVEAL_ALPHA = 11;
+const int PG_REVEAL_ALPHA = 20;
 const int PG_STEPS = 50;
 const int PG_TIMELINE[50] = int[](0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 15, 16, 17, 15, 16, 17, 15, 16, 17, 15, 16, 17, 18, 19, 20, 21, 21, 21, 22, 22, 22, 21, 21, 21, 22, 22, 22, 21, 21, 21, 22, 22);
 

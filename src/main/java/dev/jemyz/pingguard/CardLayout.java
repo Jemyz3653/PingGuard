@@ -57,7 +57,7 @@ public final class CardLayout {
 	public static final int LINE2_W = 42;
 
 	/** Alpha (out of 255) at which an armed card becomes visible; see text.vsh. */
-	public static final int REVEAL_ALPHA = 11;
+	public static final int REVEAL_ALPHA = 20;
 	/** Fade length used as the shader clock; alpha changes by exactly 1 every 2 ticks. */
 	public static final int CLOCK_TICKS = 510;
 }

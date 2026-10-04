@@ -1,24 +1,31 @@
 package dev.jemyz.pingguard.net;
 
-import io.netty.buffer.ByteBuf;
-
-import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 
 import dev.jemyz.pingguard.PingGuard;
 
-/** Server -> client mod: "this server runs PingGuard", plus its thresholds. */
-public record HelloPayload(int poorMs, int badMs, int criticalMs, int intervalMs, int recoverMs) implements CustomPacketPayload {
+/** Server -> client mod: "this server runs PingGuard", plus its settings. */
+public record HelloPayload(int poorMs, int badMs, int criticalMs, int intervalMs, int recoverMs, int confirmMs,
+		int levelChangeGraceMs) implements CustomPacketPayload {
 	public static final Type<HelloPayload> TYPE = new Type<>(PingGuard.id("hello"));
-	public static final StreamCodec<ByteBuf, HelloPayload> CODEC = StreamCodec.composite(
-			ByteBufCodecs.VAR_INT, HelloPayload::poorMs,
-			ByteBufCodecs.VAR_INT, HelloPayload::badMs,
-			ByteBufCodecs.VAR_INT, HelloPayload::criticalMs,
-			ByteBufCodecs.VAR_INT, HelloPayload::intervalMs,
-			ByteBufCodecs.VAR_INT, HelloPayload::recoverMs,
-			HelloPayload::new
-	);
+	public static final StreamCodec<FriendlyByteBuf, HelloPayload> CODEC = CustomPacketPayload.codec(HelloPayload::write, HelloPayload::read);
+
+	private static HelloPayload read(FriendlyByteBuf buf) {
+		return new HelloPayload(buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(),
+				buf.readVarInt(), buf.readVarInt());
+	}
+
+	private void write(FriendlyByteBuf buf) {
+		buf.writeVarInt(poorMs);
+		buf.writeVarInt(badMs);
+		buf.writeVarInt(criticalMs);
+		buf.writeVarInt(intervalMs);
+		buf.writeVarInt(recoverMs);
+		buf.writeVarInt(confirmMs);
+		buf.writeVarInt(levelChangeGraceMs);
+	}
 
 	@Override
 	public Type<? extends CustomPacketPayload> type() {
