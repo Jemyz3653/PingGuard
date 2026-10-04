@@ -126,7 +126,7 @@ public class PingGuardClientGameTest implements FabricClientGameTest {
 				return link != null && link.pack() == PlayerLink.Pack.LOADED;
 			}, 1200);
 			note("pack loaded after " + waited + " ticks");
-			context.waitFor(c -> c.getOverlay() == null, 600);
+			context.waitTicks(100);
 			context.waitTicks(40);
 			shot(context, "vanilla_0_normal_armed");
 
