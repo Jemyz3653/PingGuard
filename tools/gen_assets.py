@@ -822,6 +822,9 @@ layout(location = 3) out vec2 texCoord0;
 const int PG_REVEAL_ALPHA = %(reveal)d;
 const int PG_STEPS = %(steps)d;
 const int PG_TIMELINE[%(steps)d] = int[](%(timeline)s);
+const vec2 PG_CARD_SIZE = vec2(%(card_width)d, %(card_height)d);
+const float PG_CARD_SCALE = 0.65;
+const float PG_EDGE_MARGIN = 8.0;
 
 void main() {
     gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0);
@@ -852,6 +855,13 @@ void main() {
         }
         if (visible) {
             vertexColor = vec4(1.0);
+            // The card glyphs start centred at four GUI pixels per font unit.
+            vec2 projectionScale = vec2(ProjMat[0][0], ProjMat[1][1]);
+            vec2 guiSize = 2.0 / abs(projectionScale);
+            vec2 fit = guiSize * vec2(0.9, 0.8) / (4.0 * PG_CARD_SIZE);
+            float scale = PG_CARD_SCALE * min(1.0, min(fit.x, fit.y));
+            vec2 centerOffset = guiSize * 0.5 - PG_EDGE_MARGIN - 2.0 * PG_CARD_SIZE * scale;
+            gl_Position.xy = gl_Position.xy * scale + centerOffset * projectionScale * gl_Position.w;
         } else {
             vertexColor = vec4(0.0);
             gl_Position = vec4(-4.0, -4.0, 0.0, 1.0);
@@ -869,6 +879,8 @@ def write_shader(timeline, n):
         "reveal": REVEAL_ALPHA,
         "steps": len(timeline),
         "timeline": ", ".join(str(i) for i in timeline),
+        "card_width": CARD_W,
+        "card_height": SCENE_H + BAND_H,
     }
     p = os.path.join(PACK, "assets/minecraft/shaders/core/text.vsh")
     os.makedirs(os.path.dirname(p), exist_ok=True)

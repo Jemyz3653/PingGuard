@@ -30,6 +30,10 @@ public final class ConnectionHud {
 	private static final int BAND_TEX_H = 92;
 	private static final int TEXT_PX_PER_FU = 16;
 
+	private static final float CARD_SCALE = 0.65f;
+	private static final int EDGE_MARGIN = 8;
+	private static final float STATUS_GAP = 6f * CARD_SCALE;
+
 	private static final int AMBER = 0xFFFFC44D;
 	private static final int RED = 0xFFFF5A5F;
 	private static final int DIM = 0xFFC9D3E6;
@@ -84,11 +88,20 @@ public final class ConnectionHud {
 		int step = (int) ((elapsed * CardLayout.FPS / 1000L) % CardLayout.TIMELINE.length);
 		int frame = CardLayout.TIMELINE[step];
 
-		// 1 fu = 4 GUI px like the vanilla title, smaller on tiny screens
-		float scale = Math.min(4f, Math.min(sw * 0.9f / CardLayout.CARD_W, sh * 0.8f / (CardLayout.SCENE_H + CardLayout.BAND_H)));
-		int fade = (int) Math.min(255, elapsed * 255 / 250);
+		String status = ClientLink.silent()
+				? String.format(java.util.Locale.ROOT, "SERVER NOT RESPONDING  %.1f S", ClientLink.effectiveMs() / 1000.0)
+				: "PING " + ClientLink.effectiveMs() + " MS";
+		Component line = Component.literal(status).withStyle(Fonts.orbitron((ClientLink.silent() ? RED : DIM) & 0xFFFFFF));
 
-		g.fill(0, 0, sw, sh, (fade * 0x70 / 255) << 24);
+		int cardHeight = CardLayout.SCENE_H + CardLayout.BAND_H;
+		// The old centre card used up to 4 GUI pixels per title-font unit.
+		float scale = CARD_SCALE * Math.min(4f, Math.min(sw * 0.9f / CardLayout.CARD_W, sh * 0.8f / cardHeight));
+		float cardWidth = CardLayout.CARD_W * scale;
+		float statusScale = Math.min(CARD_SCALE, cardWidth / font.width(line));
+		float centerX = sw - EDGE_MARGIN - cardWidth / 2;
+		float statusTop = sh - EDGE_MARGIN - (font.lineHeight + 1) * statusScale;
+		float cardBottom = statusTop - STATUS_GAP;
+		int fade = (int) Math.min(255, elapsed * 255 / 250);
 
 		int half = CardLayout.CARD_W / 2;
 		int bandTop = CardLayout.CARD_TOP + CardLayout.SCENE_H;
@@ -97,7 +110,7 @@ public final class ConnectionHud {
 		int color = (fade << 24) | 0xFFFFFF;
 
 		g.pose().pushMatrix();
-		g.pose().translate(sw / 2f, sh / 2f);
+		g.pose().translate(centerX, cardBottom - (CardLayout.CARD_TOP + cardHeight) * scale);
 		g.pose().scale(scale, scale);
 
 		g.blit(RenderPipelines.GUI_TEXTURED, FRAMES, -half, CardLayout.CARD_TOP, 0f, (float) (frame * SCENE_TEX_H),
@@ -113,12 +126,10 @@ public final class ConnectionHud {
 
 		g.pose().popMatrix();
 
-		// status line under the card
-		String status = ClientLink.silent()
-				? String.format(java.util.Locale.ROOT, "SERVER NOT RESPONDING  %.1f S", ClientLink.effectiveMs() / 1000.0)
-				: "PING " + ClientLink.effectiveMs() + " MS";
-		Component line = Component.literal(status).withStyle(Fonts.orbitron((ClientLink.silent() ? RED : DIM) & 0xFFFFFF));
-		int y = (int) (sh / 2f + (CardLayout.CARD_TOP + CardLayout.SCENE_H + CardLayout.BAND_H) * scale) + 6;
-		g.centeredText(font, line, sw / 2, y, (fade << 24) | 0xFFFFFF);
+		g.pose().pushMatrix();
+		g.pose().translate(centerX, statusTop);
+		g.pose().scale(statusScale, statusScale);
+		g.centeredText(font, line, 0, 0, color);
+		g.pose().popMatrix();
 	}
 }
